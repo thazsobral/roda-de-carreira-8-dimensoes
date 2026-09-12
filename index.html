@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roda da Carreira - Diagnóstico Interativo & Plano Estratégico</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { 
+        background: white !important; 
+        color: black !important; 
+        font-size: 11pt; 
+        -webkit-print-color-adjust: exact !important; 
+        print-color-adjust: exact !important; 
+      }
+      .print-full { width: 100% !important; max-width: 100% !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+      .page-break { page-break-before: always; }
+      textarea, input, select { border: 1px solid #cbd5e1 !important; background: transparent !important; resize: none !important; }
+      canvas { max-width: 100% !important; height: auto !important; }
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="h-full font-sans text-slate-800 antialiased flex flex-col min-h-screen">
+
+  <!-- Header Navigation -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-50 no-print shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-sm shadow-md">
+          <i class="fa-solid fa-compass"></i>
+        </div>
+        <span class="font-bold text-sm sm:text-base tracking-tight text-slate-100">Roda da Carreira</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button onclick="openApiKeyModal()" id="btnApiKeyConfig" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-1.5 border border-slate-700">
+          <i class="fa-solid fa-key text-amber-400"></i>
+          <span id="apiKeyLabel">Chave API</span>
+          <span id="apiKeyDot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+        </button>
+        <button onclick="resetScores()" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span>Resetar</span>
+        </button>
+        <button onclick="handlePrint()" class="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition-all flex items-center gap-2">
+          <i class="fa-solid fa-print"></i>
+          <span>Imprimir / PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Custom Notification & Confirmation Modal -->
+  <div id="customModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 relative">
+      <div class="flex items-center gap-3 mb-3">
+        <div id="modalIconContainer" class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+          <i id="modalIcon" class="fa-solid fa-circle-info text-lg"></i>
+        </div>
+        <div>
+          <h3 id="modalTitle" class="font-bold text-slate-900 text-base">Aviso</h3>
+          <p id="modalSubtitle" class="text-xs text-slate-500">Notificação do sistema</p>
+        </div>
+      </div>
+      <div id="modalMessage" class="text-sm text-slate-600 space-y-2 mb-5 leading-relaxed">
+        <!-- Dynamic message -->
+      </div>
+      <div id="modalActions" class="flex items-center justify-end gap-2">
+        <button onclick="closeCustomModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-all">
+          Entendido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="apiKeyModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 relative">
+      <button onclick="closeApiKeyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg p-1">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-key text-lg"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Configurar Chave API Gemini</h3>
+          <p class="text-xs text-slate-500">Armazenada com segurança no seu navegador</p>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label for="apiKeyInput" class="block text-xs font-semibold text-slate-700 mb-1">
+            Sua Chave API (Google Gemini)
+          </label>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="apiKeyInput" 
+              placeholder="AIzaSy..."
+              class="w-full text-sm p-2.5 pr-10 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono"
+            >
+            <button onclick="toggleApiKeyVisibility()" type="button" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-sm">
+              <i id="apiKeyToggleIcon" class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+            A chave é salva apenas no <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-700">localStorage</code> do seu navegador e enviada diretamente para a API oficial do Google.
+          </p>
+        </div>
+
+        <div class="p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-900 space-y-1">
+          <p class="font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-blue-600"></i> Como obter uma chave gratuita?
+          </p>
+          <p class="text-blue-700">
+            Você pode obter uma chave gratuita em 1 minuto no 
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="underline font-bold text-blue-800 hover:text-blue-950">
+              Google AI Studio <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            </a>.
+          </p>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <button onclick="clearApiKey()" type="button" class="text-xs text-rose-600 hover:text-rose-700 font-medium">
+            Remover Chave
+          </button>
+          <div class="flex items-center gap-2">
+            <button onclick="closeApiKeyModal()" type="button" class="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+              Cancelar
+            </button>
+            <button onclick="saveApiKey()" type="button" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all">
+              Salvar Chave
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+    
+    <!-- Hero / Header Section -->
+    <div class="mb-8 text-center sm:text-left flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-6">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Roda da Carreira</h1>
+        <p class="text-sm text-slate-600 mt-1">Diagnóstico Interativo de Plenitude Profissional & Plano Estratégico</p>
+      </div>
+      <div class="flex items-center gap-2 self-center sm:self-auto no-print">
+        <button id="btnRadarType" onclick="toggleChartType('radar')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white transition-all shadow-sm">
+          <i class="fa-solid fa-chart-radar mr-1"></i> Radar
+        </button>
+        <button id="btnPolarType" onclick="toggleChartType('polarArea')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">
+          <i class="fa-solid fa-chart-pie mr-1"></i> Área Polar
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary Cards / Metrics Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <!-- Plenitude Card -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-2">
+          <span>Índice de Plenitude</span>
+          <i class="fa-solid fa-chart-line text-blue-500"></i>
+        </div>
+        <div class="flex items-baseline justify-between mb-2">
+          <span id="fullnessPercentage" class="text-2xl font-extrabold text-slate-900">50%</span>
+          <span id="overallAverageBadge" class="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">Média: 5.0</span>
+        </div>
+        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div id="fullnessBar" class="bg-blue-600 h-full rounded-full transition-all duration-300" style="width: 50%;"></div>
+        </div>
+      </div>
+
+      <!-- Menor Dimensão Card -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-2">
+          <span>Menor Pontuação</span>
+          <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+        </div>
+        <div>
+          <div id="lowestDimensionName" class="text-sm font-bold text-slate-800 truncate">Competência Técnica</div>
+          <div id="lowestDimensionScore" class="text-xs text-slate-500 font-medium mt-0.5">Nota: 5/10</div>
+        </div>
+      </div>
+
+      <!-- Alavanca Estratégica Card -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs text-slate-500 font-medium mb-2">
+          <span>Alavanca de Impacto</span>
+          <i class="fa-solid fa-bullseye text-emerald-500"></i>
+        </div>
+        <div>
+          <div id="leverageDimensionName" class="text-sm font-bold text-slate-800 truncate">Competência Técnica</div>
+          <div class="text-[11px] text-emerald-600 font-medium mt-0.5">Foco prioritário recomendado</div>
+        </div>
+      </div>
+
+      <!-- Instrução Rápida Card -->
+      <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-xl shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs text-slate-300 font-medium mb-1">
+          <span>Instruções</span>
+          <i class="fa-solid fa-lightbulb text-amber-300"></i>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Dê notas de 1 a 10. Foque na alavanca que, se movida, trará o maior impacto positivo.
+        </p>
+      </div>
+    </div>
+
+    <!-- Interactive Grid: Sliders vs Canvas -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+      <!-- Sliders List -->
+      <div class="lg:col-span-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-blue-600"></i> Avaliação das 8 Dimensões
+          </h2>
+          <span class="text-xs text-slate-500">Escala 1 a 10</span>
+        </div>
+        <div id="slidersList" class="space-y-3 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar">
+          <!-- Sliders injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Visual Wheel Canvas -->
+      <div class="lg:col-span-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center min-h-[400px]">
+        <div class="w-full h-full relative max-w-[500px] aspect-square flex items-center justify-center">
+          <canvas id="careerWheelChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action & Analysis Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Strategic Reflection Form -->
+      <div class="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-brain text-blue-600"></i> Análise Inicial & Reflexão Estratégica
+          </h2>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label for="gapAnalysis" class="block text-xs font-bold text-slate-700 mb-1.5">
+              1. Em cada dimensão, o que falta para ser nota 10?
+            </label>
+            <textarea id="gapAnalysis" rows="3" placeholder="Descreva os gaps identificados nas áreas mais críticas..." class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"></textarea>
+          </div>
+
+          <div>
+            <label for="leverReasoning" class="block text-xs font-bold text-slate-700 mb-1.5">
+              2. Por que a dimensão escolhida como alavanca terá o maior impacto positivo?
+            </label>
+            <textarea id="leverReasoning" rows="3" placeholder="Justifique por que focar nesta alavanca vai impulsionar as outras áreas..." class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"></textarea>
+          </div>
+
+          <!-- AI Coach Trigger -->
+          <div class="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xs font-bold text-slate-900">Análise Inteligente de Carreira</h3>
+              <p class="text-[11px] text-slate-500">Obtenha um plano personalizado de 7 dias com base no seu diagnóstico</p>
+            </div>
+            <button id="btnGenerateAI" onclick="generateAICoaching()" class="no-print self-start sm:self-auto px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer opacity-100" title="Gerar análise estratégica com Gemini AI">
+              <i class="fa-solid fa-robot text-blue-200"></i>
+              <span>Gerar Análise com IA</span>
+            </button>
+          </div>
+
+          <!-- AI Output Box -->
+          <div id="aiResponseCard" class="hidden p-4 bg-slate-50 rounded-xl border border-blue-100 space-y-2">
+            <div class="flex items-center gap-2 text-xs font-bold text-blue-900">
+              <i class="fa-solid fa-wand-magic-sparkles text-blue-600"></i>
+              <span>Diagnóstico do Mentor Virtual</span>
+            </div>
+            <div id="aiContent" class="text-xs text-slate-700 leading-relaxed space-y-2">
+              <!-- Dynamic AI content -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Plan Items -->
+      <div class="lg:col-span-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-blue-600"></i> Compromissos & Ações
+            </h2>
+          </div>
+
+          <!-- Create Action Form -->
+          <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200/80 no-print">
+            <div>
+              <label for="focusAreaSelect" class="block text-[11px] font-semibold text-slate-600 mb-1">Área Foco</label>
+              <select id="focusAreaSelect" class="w-full text-xs p-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                <!-- Options populated dynamically -->
+              </select>
+            </div>
+            <div>
+              <label for="actionText" class="block text-[11px] font-semibold text-slate-600 mb-1">Ação Prática</label>
+              <input type="text" id="actionText" placeholder="Ex: Marcar reunião com gestor sobre novo projeto" class="w-full text-xs p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+              <label for="actionDate" class="block text-[11px] font-semibold text-slate-600 mb-1">Data Limite</label>
+              <input type="date" id="actionDate" class="w-full text-xs p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <button onclick="addCustomAction()" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-plus"></i> Adicionar Ação ao Plano
+            </button>
+          </div>
+
+          <!-- Actions List -->
+          <div id="actionsList" class="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar">
+            <!-- Action cards populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-xs text-slate-500 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+      <p>Roda da Carreira &copy; 2026. Todos os direitos reservados.</p>
+      <p class="font-medium text-slate-600">Desenvolvido por <span class="font-semibold text-slate-800">ThazSobral</span></p>
+    </div>
+  </footer>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // 8 Core Career Dimensions from PDF
+    const DEFAULT_DIMENSIONS = [
+      { id: 'tech_comp', label: 'Competência Técnica', score: 5, description: 'Domínio de ferramentas, hard skills e conhecimento da área.' },
+      { id: 'behavioral', label: 'Habilidades Comportamentais', score: 5, description: 'Soft skills, inteligência emocional, gestão de conflitos e comunicação.' },
+      { id: 'networking', label: 'Networking e Relacionamentos', score: 5, description: 'Conexões profissionais, mentoria e engajamento na comunidade.' },
+      { id: 'worklife', label: 'Equilíbrio Vida e Trabalho', score: 5, description: 'Saúde mental, bem-estar, lazer e gestão de tempo pessoal.' },
+      { id: 'compensation', label: 'Remuneração e Benefícios', score: 5, description: 'Satisfação financeira, justiça salarial e pacote total.' },
+      { id: 'purpose', label: 'Propósito e Satisfação', score: 5, description: 'Alinhamento com valores pessoais, paixão e senso de impacto.' },
+      { id: 'visibility', label: 'Visibilidade e Marca Pessoal', score: 5, description: 'Reconhecimento no mercado/empresa e posicionamento profissional.' },
+      { id: 'growth', label: 'Perspectiva de Crescimento', score: 5, description: 'Oportunidades futuras, promoções e aprendizado contínuo.' }
+    ];
+
+    let dimensions = JSON.parse(localStorage.getItem('roda_carreira_dims')) || JSON.parse(JSON.stringify(DEFAULT_DIMENSIONS));
+    let actionItems = JSON.parse(localStorage.getItem('roda_carreira_actions')) || [];
+    let chartInstance = null;
+    let currentChartType = 'radar';
+
+    // Custom Modal System (Replaces native alert and confirm)
+    function showNotification(title, message, iconType = 'info', confirmCallback = null) {
+      const modal = document.getElementById('customModal');
+      const titleEl = document.getElementById('modalTitle');
+      const msgEl = document.getElementById('modalMessage');
+      const iconEl = document.getElementById('modalIcon');
+      const iconContainer = document.getElementById('modalIconContainer');
+      const actionsEl = document.getElementById('modalActions');
+
+      titleEl.innerText = title;
+      msgEl.innerHTML = message;
+
+      if (iconType === 'warning') {
+        iconContainer.className = 'w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0';
+        iconEl.className = 'fa-solid fa-triangle-exclamation text-lg';
+      } else if (iconType === 'danger') {
+        iconContainer.className = 'w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0';
+        iconEl.className = 'fa-solid fa-circle-exclamation text-lg';
+      } else {
+        iconContainer.className = 'w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0';
+        iconEl.className = 'fa-solid fa-circle-info text-lg';
+      }
+
+      if (confirmCallback) {
+        actionsEl.innerHTML = `
+          <button onclick="closeCustomModal()" class="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+            Cancelar
+          </button>
+          <button id="modalConfirmActionBtn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all">
+            Confirmar Reset
+          </button>
+        `;
+        document.getElementById('modalConfirmActionBtn').onclick = () => {
+          closeCustomModal();
+          confirmCallback();
+        };
+      } else {
+        actionsEl.innerHTML = `
+          <button onclick="closeCustomModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-all">
+            Entendido
+          </button>
+        `;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeCustomModal() {
+      document.getElementById('customModal').classList.add('hidden');
+    }
+
+    // Safe Print Handler with Fallback Message
+    function handlePrint() {
+      try {
+        window.focus();
+        window.print();
+      } catch (err) {
+        console.warn('Função de impressão bloqueada pelo sandbox:', err);
+        showNotification(
+          'Dica de Impressão / PDF',
+          '<p class="mb-2">A janela de impressão foi temporariamente bloqueada pelas permissões do ambiente de visualização.</p>' +
+          '<div class="p-3 bg-slate-100 rounded-lg text-xs space-y-1 font-mono text-slate-700">' +
+          '<p><strong>Atalho no Teclado:</strong> Pressione <strong>Ctrl + P</strong> (Windows) ou <strong>Cmd + P</strong> (Mac).</p>' +
+          '</div>',
+          'warning'
+        );
+      }
+    }
+
+    // Initialize Page
+    window.addEventListener('DOMContentLoaded', () => {
+      renderSliders();
+      renderFocusSelectOptions();
+      initChart();
+      updateMetrics();
+      renderActionItems();
+      loadSavedReflections();
+      updateApiKeyStatus();
+      
+      // Auto-save reflections on input
+      document.getElementById('gapAnalysis').addEventListener('input', saveReflections);
+      document.getElementById('leverReasoning').addEventListener('input', saveReflections);
+    });
+
+    // API Key Management Functions
+    function getApiKey() {
+      return localStorage.getItem('roda_carreira_api_key') || '';
+    }
+
+    function updateApiKeyStatus() {
+      const key = getApiKey();
+      const dot = document.getElementById('apiKeyDot');
+      const label = document.getElementById('apiKeyLabel');
+      const btnAI = document.getElementById('btnGenerateAI');
+      
+      if (key) {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        label.innerText = 'Chave Salva';
+        
+        if (btnAI) {
+          btnAI.disabled = false;
+          btnAI.className = "no-print self-start sm:self-auto px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 cursor-pointer opacity-100";
+          btnAI.title = "Gerar análise estratégica com Gemini AI";
+        }
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        label.innerText = 'Chave API';
+        
+        if (btnAI) {
+          btnAI.disabled = true;
+          btnAI.className = "no-print self-start sm:self-auto px-4 py-2.5 bg-slate-700 text-slate-400 font-medium text-xs sm:text-sm rounded-xl transition-all flex items-center gap-2 cursor-not-allowed opacity-60 border border-slate-600/50";
+          btnAI.title = "Configure a Chave API no topo da página para habilitar esta função";
+        }
+      }
+    }
+
+    function openApiKeyModal() {
+      const modal = document.getElementById('apiKeyModal');
+      const input = document.getElementById('apiKeyInput');
+      input.value = getApiKey();
+      modal.classList.remove('hidden');
+    }
+
+    function closeApiKeyModal() {
+      document.getElementById('apiKeyModal').classList.add('hidden');
+    }
+
+    function saveApiKey() {
+      const input = document.getElementById('apiKeyInput');
+      const val = input.value.trim();
+      
+      if (val) {
+        localStorage.setItem('roda_carreira_api_key', val);
+      } else {
+        localStorage.removeItem('roda_carreira_api_key');
+      }
+      
+      updateApiKeyStatus();
+      closeApiKeyModal();
+    }
+
+    function clearApiKey() {
+      localStorage.removeItem('roda_carreira_api_key');
+      document.getElementById('apiKeyInput').value = '';
+      updateApiKeyStatus();
+      closeApiKeyModal();
+    }
+
+    function toggleApiKeyVisibility() {
+      const input = document.getElementById('apiKeyInput');
+      const icon = document.getElementById('apiKeyToggleIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fa-solid fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fa-solid fa-eye';
+      }
+    }
+
+    function renderSliders() {
+      const listEl = document.getElementById('slidersList');
+      if (!listEl) return;
+      listEl.innerHTML = '';
+
+      dimensions.forEach((dim, idx) => {
+        const item = document.createElement('div');
+        item.className = 'p-3 bg-slate-50 rounded-xl border border-slate-200/60 hover:border-slate-300 transition-all';
+        
+        let scoreBadgeColor = 'bg-blue-100 text-blue-700';
+        if (dim.score <= 3) scoreBadgeColor = 'bg-rose-100 text-rose-700';
+        else if (dim.score >= 8) scoreBadgeColor = 'bg-emerald-100 text-emerald-700';
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="slider-${idx}" class="font-semibold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5">
+              <span>${dim.label}</span>
+            </label>
+            <span id="score-badge-${idx}" class="px-2 py-0.5 rounded text-xs font-bold ${scoreBadgeColor}">
+              ${dim.score} / 10
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500 mb-2 leading-tight">${dim.description}</p>
+          <div class="flex items-center gap-3">
+            <span class="text-[10px] font-bold text-slate-400">1</span>
+            <input 
+              type="range" 
+              id="slider-${idx}"
+              min="1" 
+              max="10" 
+              value="${dim.score}"
+              oninput="onScoreChange(${idx}, this.value)"
+              class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+            >
+            <span class="text-[10px] font-bold text-slate-400">10</span>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    function renderFocusSelectOptions() {
+      const select = document.getElementById('focusAreaSelect');
+      if (!select) return;
+      select.innerHTML = '';
+      dimensions.forEach(dim => {
+        const opt = document.createElement('option');
+        opt.value = dim.label;
+        opt.innerText = `${dim.label} (Nota: ${dim.score})`;
+        select.appendChild(opt);
+      });
+    }
+
+    function onScoreChange(idx, val) {
+      val = parseInt(val, 10);
+      dimensions[idx].score = val;
+      
+      // Update badge UI
+      const badge = document.getElementById(`score-badge-${idx}`);
+      if (badge) {
+        badge.innerText = `${val} / 10`;
+        badge.className = `px-2 py-0.5 rounded text-xs font-bold ${
+          val <= 3 ? 'bg-rose-100 text-rose-700' : val >= 8 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+        }`;
+      }
+
+      saveDimensions();
+      updateChart();
+      updateMetrics();
+      renderFocusSelectOptions();
+    }
+
+    function updateMetrics() {
+      const total = dimensions.reduce((acc, d) => acc + d.score, 0);
+      const avg = (total / dimensions.length).toFixed(1);
+      const fullnessPct = Math.round((total / (dimensions.length * 10)) * 100);
+
+      const avgBadge = document.getElementById('overallAverageBadge');
+      const fullnessText = document.getElementById('fullnessPercentage');
+      const fullnessBar = document.getElementById('fullnessBar');
+
+      if (avgBadge) avgBadge.innerText = `Média: ${avg}`;
+      if (fullnessText) fullnessText.innerText = `${fullnessPct}%`;
+      if (fullnessBar) fullnessBar.style.width = `${fullnessPct}%`;
+
+      // Find lowest scoring dimension
+      let sorted = [...dimensions].sort((a, b) => a.score - b.score);
+      let lowest = sorted[0];
+
+      const lowestName = document.getElementById('lowestDimensionName');
+      const lowestScore = document.getElementById('lowestDimensionScore');
+      const leverageName = document.getElementById('leverageDimensionName');
+
+      if (lowestName) lowestName.innerText = lowest.label;
+      if (lowestScore) lowestScore.innerText = `Nota: ${lowest.score}/10`;
+      if (leverageName) leverageName.innerText = lowest.label;
+    }
+
+    function initChart() {
+      const canvas = document.getElementById('careerWheelChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      
+      chartInstance = new Chart(ctx, {
+        type: currentChartType,
+        data: getChartData(),
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              min: 0,
+              max: 10,
+              ticks: {
+                stepSize: 2,
+                display: true,
+                backdropColor: 'transparent',
+                font: { size: 10 }
+              },
+              grid: { color: 'rgba(203, 213, 225, 0.5)' },
+              angleLines: { color: 'rgba(203, 213, 225, 0.7)' },
+              pointLabels: {
+                font: { size: 11, weight: '600', family: 'Inter' },
+                color: '#334155'
+              }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `Nota: ${ctx.raw} de 10`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function getChartData() {
+      return {
+        labels: dimensions.map(d => d.label),
+        datasets: [{
+          label: 'Nota Atual',
+          data: dimensions.map(d => d.score),
+          backgroundColor: currentChartType === 'radar' ? 'rgba(37, 99, 235, 0.25)' : dimensions.map(d => getSliceColor(d.score, 0.4)),
+          borderColor: currentChartType === 'radar' ? '#2563eb' : dimensions.map(d => getSliceColor(d.score, 1)),
+          borderWidth: 2,
+          pointBackgroundColor: '#1d4ed8',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: '#1d4ed8',
+          pointRadius: 4
+        }]
+      };
+    }
+
+    function getSliceColor(score, alpha) {
+      if (score <= 3) return `rgba(244, 63, 94, ${alpha})`;
+      if (score >= 8) return `rgba(16, 185, 129, ${alpha})`;
+      return `rgba(37, 99, 235, ${alpha})`;
+    }
+
+    function updateChart() {
+      if (!chartInstance) return;
+      chartInstance.data = getChartData();
+      chartInstance.update();
+    }
+
+    function toggleChartType(type) {
+      currentChartType = type;
+      const btnRadar = document.getElementById('btnRadarType');
+      const btnPolar = document.getElementById('btnPolarType');
+
+      if (btnRadar) {
+        btnRadar.className = type === 'radar' 
+          ? 'px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white transition-all shadow-sm'
+          : 'px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all';
+      }
+      
+      if (btnPolar) {
+        btnPolar.className = type === 'polarArea' 
+          ? 'px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white transition-all shadow-sm'
+          : 'px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all';
+      }
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+      initChart();
+    }
+
+    function addCustomAction() {
+      const areaSelect = document.getElementById('focusAreaSelect');
+      const textInput = document.getElementById('actionText');
+      const dateInput = document.getElementById('actionDate');
+
+      const area = areaSelect ? areaSelect.value : '';
+      const text = textInput ? textInput.value.trim() : '';
+      const date = dateInput ? dateInput.value : '';
+
+      if (!text) {
+        showNotification('Campo Obrigatório', 'Por favor, descreva a ação prática a ser realizada.', 'warning');
+        return;
+      }
+
+      const newAction = {
+        id: Date.now(),
+        area: area,
+        text: text,
+        date: date || 'Sem data definida',
+        completed: false
+      };
+
+      actionItems.push(newAction);
+      saveActionItems();
+      renderActionItems();
+
+      if (textInput) textInput.value = '';
+      if (dateInput) dateInput.value = '';
+    }
+
+    function toggleAction(id) {
+      actionItems = actionItems.map(item => item.id === id ? { ...item, completed: !item.completed } : item);
+      saveActionItems();
+      renderActionItems();
+    }
+
+    function deleteAction(id) {
+      actionItems = actionItems.filter(item => item.id !== id);
+      saveActionItems();
+      renderActionItems();
+    }
+
+    function renderActionItems() {
+      const list = document.getElementById('actionsList');
+      if (!list) return;
+
+      if (actionItems.length === 0) {
+        list.innerHTML = `
+          <p class="text-xs text-slate-400 italic py-2">Nenhum compromisso registrado ainda. Defina uma ação acima.</p>
+        `;
+        return;
+      }
+
+      list.innerHTML = '';
+      actionItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = `flex items-center justify-between p-3 rounded-lg border text-xs transition-all ${
+          item.completed ? 'bg-slate-100 border-slate-200 text-slate-400 line-through' : 'bg-white border-slate-200 text-slate-700'
+        }`;
+        
+        div.innerHTML = `
+          <div class="flex items-center gap-3">
+            <input 
+              type="checkbox" 
+              ${item.completed ? 'checked' : ''} 
+              onchange="toggleAction(${item.id})"
+              class="w-4 h-4 text-blue-600 rounded cursor-pointer"
+            >
+            <div>
+              <span class="font-bold text-slate-900 block ${item.completed ? 'line-through text-slate-400' : ''}">${item.area}</span>
+              <span>${item.text}</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+              <i class="fa-regular fa-calendar text-slate-400 mr-1"></i>${item.date}
+            </span>
+            <button onclick="deleteAction(${item.id})" class="text-slate-400 hover:text-rose-600 no-print">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    async function generateAICoaching() {
+      const btn = document.getElementById('btnGenerateAI');
+      const responseCard = document.getElementById('aiResponseCard');
+      const content = document.getElementById('aiContent');
+
+      if (!btn || !responseCard || !content) return;
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Analisando com IA...`;
+
+      responseCard.classList.remove('hidden');
+      content.innerHTML = `<p class="italic text-slate-400">Processando seu diagnóstico da Roda da Carreira...</p>`;
+
+      const summaryScores = dimensions.map(d => `${d.label}: ${d.score}/10`).join('\n');
+      const gapText = document.getElementById('gapAnalysis')?.value;
+      const leverText = document.getElementById('leverReasoning')?.value;
+
+      const userPrompt = `
+Atue como um Mentor de Carreira de Alto Nível. Analise os dados da minha "Roda da Carreira":
+
+Notas Atuais:
+${summaryScores}
+
+Reflexões do Usuário:
+- O que falta para nota 10: "${gapText || 'Não informado'}"
+- Justificativa da Alavanca: "${leverText || 'Não informado'}"
+
+Por favor, forneça um diagnóstico estruturado curto e poderoso em HTML simples (parágrafos <p> e tópicos <ul>/<li>):
+1. **Análise do Estado Atual**: Uma síntese rápida do equilíbrio de carreira do usuário.
+2. **Identificação da Alavanca Principal**: Qual área (nota mais baixa ou com maior efeito multiplicador) ele deve priorizar imediatamente.
+3. **3 Ações Práticas para os Próximos 7 Dias**: Ações concretas, realistas e de alto impacto.
+      `;
+
+      try {
+        const apiKey = getApiKey();
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        const payload = {
+          contents: [{ parts: [{ text: userPrompt }] }],
+          systemInstruction: {
+            parts: [{ text: "Você é um profissional de coaching de carreira experiente, conciso, empático e focado em ações práticas." }]
+          }
+        };
+
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.error) {
+          throw new Error(data.error.message || 'Erro no serviço da API');
+        }
+
+        const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (responseText) {
+          content.innerHTML = responseText;
+        } else {
+          content.innerHTML = `<p class="text-rose-600">Não foi possível gerar o diagnóstico no momento. Verifique sua chave API e tente novamente.</p>`;
+        }
+      } catch (err) {
+        console.error('Erro na API Gemini:', err);
+        content.innerHTML = `
+          <div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs space-y-2">
+            <p class="font-bold flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation"></i> Falha ao consultar o assistente de IA.
+            </p>
+            <p>${err.message || 'Caso esteja executando este arquivo fora do ambiente de pré-visualização, configure uma chave API do Gemini no botão superior.'}</p>
+            <button onclick="openApiKeyModal()" class="px-3 py-1.5 bg-rose-600 text-white rounded font-semibold text-xs hover:bg-rose-700 transition-colors inline-flex items-center gap-1">
+              <i class="fa-solid fa-key"></i> Configurar Chave API Pessoal
+            </button>
+          </div>
+        `;
+      } finally {
+        btn.innerHTML = `<i class="fa-solid fa-robot text-blue-200"></i><span>Gerar Análise com IA</span>`;
+        updateApiKeyStatus();
+      }
+    }
+
+    // Local Storage Helpers
+    function saveDimensions() {
+      localStorage.setItem('roda_carreira_dims', JSON.stringify(dimensions));
+    }
+
+    function saveActionItems() {
+      localStorage.setItem('roda_carreira_actions', JSON.stringify(actionItems));
+    }
+
+    function saveReflections() {
+      const gap = document.getElementById('gapAnalysis')?.value || '';
+      const lever = document.getElementById('leverReasoning')?.value || '';
+      localStorage.setItem('roda_carreira_reflections', JSON.stringify({ gap, lever }));
+    }
+
+    function loadSavedReflections() {
+      const saved = JSON.parse(localStorage.getItem('roda_carreira_reflections'));
+      if (saved) {
+        const gapEl = document.getElementById('gapAnalysis');
+        const leverEl = document.getElementById('leverReasoning');
+        if (gapEl && saved.gap) gapEl.value = saved.gap;
+        if (leverEl && saved.lever) leverEl.value = saved.lever;
+      }
+    }
+
+    function resetScores() {
+      showNotification(
+        'Confirmar Reset',
+        'Tem certeza que deseja resetar todas as notas e recomeçar seu diagnóstico?',
+        'danger',
+        () => {
+          dimensions = JSON.parse(JSON.stringify(DEFAULT_DIMENSIONS));
+          actionItems = [];
+          localStorage.removeItem('roda_carreira_dims');
+          localStorage.removeItem('roda_carreira_actions');
+          localStorage.removeItem('roda_carreira_reflections');
+          
+          const gapEl = document.getElementById('gapAnalysis');
+          const leverEl = document.getElementById('leverReasoning');
+          const aiCard = document.getElementById('aiResponseCard');
+
+          if (gapEl) gapEl.value = '';
+          if (leverEl) leverEl.value = '';
+          if (aiCard) aiCard.classList.add('hidden');
+
+          renderSliders();
+          renderFocusSelectOptions();
+          updateChart();
+          updateMetrics();
+          renderActionItems();
+        }
+      );
+    }
+  </script>
+</body>
+</html>
