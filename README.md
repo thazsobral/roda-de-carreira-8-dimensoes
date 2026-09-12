@@ -55,3 +55,26 @@ Como o projeto é totalmente *client-side* (tudo roda direto no navegador):
 1. Clone este repositório:
    ```bash
    git clone [https://github.com/seu-usuario/roda-da-carreira.git](https://github.com/seu-usuario/roda-da-carreira.git)
+   ```
+
+2. Abra o arquivo `index.html` em qualquer navegador web de sua preferência.
+
+---
+
+## 🔑 Como Configurar a IA (Opcional)
+
+Para utilizar a funcionalidade **Gerar Análise com IA**:
+
+1. Obtenha uma chave de API gratuita no [Google AI Studio](https://aistudio.google.com/).
+2. Abra a aplicação no navegador.
+3. Clique no botão **Chave API** no cabeçalho.
+4. Cole sua chave e clique em **Salvar Chave**.
+5. O botão da IA será habilitado automaticamente.
+
+---
+
+## 📝 Licença & Créditos
+
+Desenvolvido por **[ThazSobral](https://www.google.com/search?q=https://github.com/seu-usuario)** © 2026.
+
+Distribuído sob a licença MIT. Sinta-se à vontade para usar, modificar e contribuir!
